@@ -1,0 +1,31 @@
+{
+  "name": "homebridge-nuki-latch",
+  "version": "0.0.1",
+  "description": "Nuki for latched doors",
+  "keywords": [
+    "homebridge-plugin",
+    "lock",
+    "Nuki",
+    "door",
+    "latch"
+  ],
+  "license": "MIT",
+  "author": {
+    "name": "Mario Uher",
+    "email": "uher.mario@gmail.com"
+  },
+  "main": "src/index.js",
+  "scripts": {
+    "lint": "standard --fix src/index.js"
+  },
+  "devDependencies": {
+    "standard": "^14.3.3"
+  },
+  "engines": {
+    "homebridge": ">=1.0.0",
+    "node": ">=12.14.1"
+  },
+  "dependencies": {
+    "node-fetch": "^2.6.0"
+  }
+}
