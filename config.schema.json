@@ -1,0 +1,55 @@
+{
+  "pluginAlias": "NukiLatch",
+  "pluginType": "accessory",
+  "singular": true,
+  "schema": {
+    "type": "object",
+    "properties": {
+      "name": {
+        "title": "Name",
+        "type": "string",
+        "required": true
+      },
+      "nukiId": {
+        "title": "Nuki ID",
+        "type": "integer",
+        "required": true,
+        "description": "The ID of your Nuki SmartLock."
+      },
+      "nukiBridgeIp": {
+        "title": "Nuki Bridge IP",
+        "type": "string",
+        "required": true,
+        "description": "The IP or hostname of your Nuki bridge."
+      },
+      "nukiBridgePort": {
+        "title": "Nuki Bridge Port",
+        "type": "integer",
+        "required": true,
+        "description": "The port of your Nuki bridge.",
+        "default": 8080,
+        "maximum": 65535
+      },
+      "nukiBridgeToken": {
+        "title": "Nuki Bridge Token",
+        "type": "string",
+        "required": true,
+        "description": "The API token of your Nuki bridge."
+      },
+      "homebridgeIp": {
+        "title": "Homebridge IP",
+        "type": "string",
+        "required": true,
+        "description": "The IP or hostname of Homebridge."
+      },
+      "homebridgePort": {
+        "title": "Homebridge Server Port",
+        "type": "string",
+        "required": true,
+        "description": "The port used for callbacks.",
+        "default": 8080,
+        "maximum": 65535
+      }
+    }
+  }
+}

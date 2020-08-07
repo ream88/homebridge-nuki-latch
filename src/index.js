@@ -149,25 +149,16 @@ class NukiLatch {
     this.batteryService = new Service.BatteryService()
 
     // HTTP Server for Nuki bridge callbacks
-    const httpServerPort = 8000
-
     http.createServer((request, response) => {
       readData(request).then(parseJSON).then((state) => this.updateSmartLockState(state))
       response.end()
-    }).listen(httpServerPort)
+    }).listen(this.config.homebridgePort)
 
-    const nukiBridgeIp = ''
-    const nukiBridgePort = ''
-    const nukiBridgeToken = ''
-    const nukiId = 0
-
-    const callbackURL = `http://127.0.0.1:${httpServerPort}`
-
-    this.bridge = new NukiBridge(this.log, nukiBridgeIp, nukiBridgePort, nukiBridgeToken)
-    this.bridge.installCallback(callbackURL)
+    this.bridge = new NukiBridge(this.log, this.config.nukiBridgeIp, this.config.nukiBridgePort, this.config.nukiBridgeToken)
+    this.bridge.installCallback(`${this.config.homebridgeIp}:${this.config.homebridgePort}`)
     this.bridge.loadDevices().then((devices) => {
       this.door = devices.find((device) => {
-        return device.nukiId === nukiId
+        return device.nukiId === this.config.nukiId
       })
 
       this.updateSmartLockState(this.door)
