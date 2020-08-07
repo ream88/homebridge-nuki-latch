@@ -16,7 +16,7 @@
   },
   "main": "src/index.js",
   "scripts": {
-    "lint": "standard --fix src/index.js"
+    "lint": "standard --fix src/*.js"
   },
   "devDependencies": {
     "standard": "^14.3.3"

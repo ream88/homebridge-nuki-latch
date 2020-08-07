@@ -19,6 +19,20 @@ module.exports = (homebridge) => {
   homebridge.registerAccessory('NukiLatch', NukiLatch)
 }
 
+function readData (stream) {
+  return new Promise((resolve) => {
+    let data = ''
+
+    stream.on('data', (chunk) => {
+      data += chunk
+    })
+
+    stream.on('end', () => {
+      resolve(data)
+    })
+  })
+}
+
 function parseJSON (data) {
   return new Promise((resolve, reject) => {
     try {
@@ -46,17 +60,7 @@ class NukiBridge {
     }
 
     return new Promise((resolve) => {
-      http.get(url.toString(), (response) => {
-        let data = ''
-
-        response.on('data', (chunk) => {
-          data += chunk
-        })
-
-        response.on('end', () => {
-          resolve(data)
-        })
-      })
+      http.get(url.toString(), resolve)
     })
   }
 
@@ -64,7 +68,7 @@ class NukiBridge {
     return new Promise((resolve) => {
       this.log.debug('Loading devices…')
 
-      this.fetch('/list').then(parseJSON).then((devices) => {
+      this.fetch('/list').then(readData).then(parseJSON).then((devices) => {
         this.log.debug('Devices loaded:', JSON.stringify(devices))
 
         resolve(devices)
@@ -75,7 +79,7 @@ class NukiBridge {
   installCallback (url) {
     this.log.debug('Loading callbacks…')
 
-    this.fetch('/callback/list').then(parseJSON).then((response) => {
+    this.fetch('/callback/list').then(readData).then(parseJSON).then((response) => {
       this.log.debug('Callbacks loaded:', response)
 
       const callback = response.callbacks.find((callback) => {
@@ -85,7 +89,7 @@ class NukiBridge {
       if (callback) {
         this.log.debug(`Callback ${url} already registered`)
       } else {
-        this.fetch('/callback/add', { url: url }).then(parseJSON).then(response => {
+        this.fetch('/callback/add', { url: url }).then(readData).then(parseJSON).then(response => {
           if (response.success) {
             this.log.debug(`Callback ${url} successfully registered`)
           } else {
@@ -97,17 +101,17 @@ class NukiBridge {
   }
 
   lock (id) {
-    this.log.debug('Locking door with ID:', id)
+    this.log.debug('Locking SmartLock with ID:', id)
     return this.fetch('/lockAction', { nukiId: id, action: LOCK_ACTION_LOCK })
   }
 
   unlock (id) {
-    this.log.debug('Unlocking door with ID:', id)
+    this.log.debug('Unlocking SmartLock with ID:', id)
     return this.fetch('/lockAction', { nukiId: id, action: LOCK_ACTION_UNLOCK })
   }
 
   unlatch (id) {
-    this.log.debug('Unlocking and unlatching door with ID:', id)
+    this.log.debug('Unlocking and unlatching SmartLock with ID:', id)
     return this.fetch('/lockAction', { nukiId: id, action: LOCK_ACTION_UNLATCH })
   }
 }
@@ -144,24 +148,13 @@ class NukiLatch {
     this.contactSensorService = new Service.ContactSensor()
     this.batteryService = new Service.BatteryService()
 
-    this.httpServer = http.createServer((request, response) => {
-      let data = ''
-
-      request.on('data', (chunk) => {
-        data += chunk
-      })
-
-      request.on('end', () => {
-        this.log.debug('Incoming callback:', data)
-        this.updateDoorState(JSON.parse(data))
-      })
-
-      response.end()
-    })
-
+    // HTTP Server for Nuki bridge callbacks
     const httpServerPort = 8000
 
-    this.httpServer.listen(httpServerPort)
+    http.createServer((request, response) => {
+      readData(request).then(parseJSON).then((state) => this.updateSmartLockState(state))
+      response.end()
+    }).listen(httpServerPort)
 
     const nukiBridgeIp = ''
     const nukiBridgePort = ''
@@ -177,7 +170,7 @@ class NukiLatch {
         return device.nukiId === nukiId
       })
 
-      this.updateDoorState(this.door)
+      this.updateSmartLockState(this.door)
     })
   }
 
@@ -196,7 +189,7 @@ class NukiLatch {
 
     switch (state) {
       case Characteristic.LockCurrentState.SECURED:
-        this.bridge.lock(this.door.nukiId).then(parseJSON).then((response) => {
+        this.bridge.lock(this.door.nukiId).then(readData).then(parseJSON).then((response) => {
           if (response.success) {
             this.lockService.getCharacteristic(Characteristic.LockTargetState).updateValue(Characteristic.LockTargetState.SECURED)
             this.lockService.getCharacteristic(Characteristic.LockCurrentState).updateValue(Characteristic.LockCurrentState.SECURED)
@@ -209,7 +202,7 @@ class NukiLatch {
         break
 
       case Characteristic.LockCurrentState.UNSECURED:
-        this.bridge.unlock(this.door.nukiId).then(parseJSON).then((response) => {
+        this.bridge.unlock(this.door.nukiId).then(readData).then(parseJSON).then((response) => {
           if (response.success) {
             this.lockService.getCharacteristic(Characteristic.LockTargetState).updateValue(Characteristic.LockTargetState.UNSECURED)
             this.lockService.getCharacteristic(Characteristic.LockCurrentState).updateValue(Characteristic.LockCurrentState.UNSECURED)
@@ -228,7 +221,7 @@ class NukiLatch {
 
     switch (state) {
       case Characteristic.LockCurrentState.UNSECURED:
-        this.bridge.unlatch(this.door.nukiId).then(parseJSON).then((response) => {
+        this.bridge.unlatch(this.door.nukiId).then(readData).then(parseJSON).then((response) => {
           if (response.success) {
             this.lockService.getCharacteristic(Characteristic.LockTargetState).updateValue(Characteristic.LockTargetState.UNSECURED)
             this.lockService.getCharacteristic(Characteristic.LockCurrentState).updateValue(Characteristic.LockCurrentState.UNSECURED)
@@ -246,7 +239,7 @@ class NukiLatch {
     }
   }
 
-  updateDoorState (data) {
+  updateSmartLockState (data) {
     const state = data.lastKnownState ? data.lastKnownState : data
     this.log.debug('Updating state:', data)
 
