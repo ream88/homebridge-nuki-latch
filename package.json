@@ -25,7 +25,5 @@
     "homebridge": ">=1.0.0",
     "node": ">=12.14.1"
   },
-  "dependencies": {
-    "node-fetch": "^2.6.0"
-  }
+  "dependencies": {}
 }
