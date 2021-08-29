@@ -5,10 +5,12 @@ let Service, Characteristic
 
 const DOOR_STATE_DOOR_CLOSED = 2
 const DOOR_STATE_DOOR_OPENED = 3
+
 const LOCK_STATE_LOCKED = 1
 const LOCK_STATE_JAMMED = 2
 const LOCK_STATE_UNLOCKED = 3
 const LOCK_STATE_UNLATCHED = 5
+
 const LOCK_ACTION_UNLOCK = 1
 const LOCK_ACTION_LOCK = 2
 const LOCK_ACTION_UNLATCH = 3
@@ -83,9 +85,7 @@ class NukiBridge {
     this.fetch('/callback/list').then(readData).then(parseJSON).then((response) => {
       this.log.debug('Callbacks loaded:', response)
 
-      const callback = response.callbacks.find((callback) => {
-        return callback.url === url
-      })
+      const callback = response.callbacks.find((callback) => callback.url === url)
 
       if (callback) {
         this.log.debug(`Callback ${url} already registered`)
@@ -132,19 +132,17 @@ class NukiLatch {
     this.lockService
       .getCharacteristic(Characteristic.LockTargetState)
       .on('set', (state, callback) => this.setLockTargetState(state, callback))
-      .updateValue(Characteristic.LockTargetState.UNKNOWN)
-    this.lockService
-      .getCharacteristic(Characteristic.LockCurrentState)
-      .updateValue(Characteristic.LockCurrentState.UNKNOWN)
+
+    this.lockService.getCharacteristic(Characteristic.LockTargetState).updateValue(Characteristic.LockTargetState.SECURED)
+    this.lockService.getCharacteristic(Characteristic.LockCurrentState).updateValue(Characteristic.LockCurrentState.SECURED)
 
     this.latchService = new Service.LockMechanism(this.config.name, 'latch')
     this.latchService
       .getCharacteristic(Characteristic.LockTargetState)
       .on('set', (state, callback) => this.setLatchTargetState(state, callback))
-      .updateValue(Characteristic.LockTargetState.UNKNOWN)
-    this.latchService
-      .getCharacteristic(Characteristic.LockCurrentState)
-      .updateValue(Characteristic.LockCurrentState.UNKNOWN)
+
+    this.latchService.getCharacteristic(Characteristic.LockTargetState).updateValue(Characteristic.LockTargetState.SECURED)
+    this.latchService.getCharacteristic(Characteristic.LockCurrentState).updateValue(Characteristic.LockCurrentState.SECURED)
 
     this.contactSensorService = new Service.ContactSensor()
     this.batteryService = new Service.BatteryService()
@@ -158,10 +156,7 @@ class NukiLatch {
     this.bridge = new NukiBridge(this.log, this.config.nukiBridgeIp, this.config.nukiBridgePort, this.config.nukiBridgeToken)
     this.bridge.installCallback(`${this.config.homebridgeIp}:${this.config.homebridgePort}`)
     this.bridge.loadDevices().then((devices) => {
-      this.door = devices.find((device) => {
-        return device.nukiId === this.config.nukiId
-      })
-
+      this.door = devices.find((device) => device.nukiId === this.config.nukiId)
       this.updateSmartLockState(this.door)
     })
   }
@@ -177,6 +172,8 @@ class NukiLatch {
   }
 
   setLockTargetState (state, callback) {
+    this.log.debug('setLockTargetState to:', state)
+
     this.lockService.getCharacteristic(Characteristic.LockTargetState).updateValue(state)
 
     switch (state) {
@@ -184,12 +181,8 @@ class NukiLatch {
         this.bridge.lock(this.door.nukiId).then(readData).then(parseJSON).then((response) => {
           if (response.success) {
             this.lockService.getCharacteristic(Characteristic.LockTargetState).updateValue(Characteristic.LockTargetState.SECURED)
-            this.lockService.getCharacteristic(Characteristic.LockCurrentState).updateValue(Characteristic.LockCurrentState.SECURED)
             this.latchService.getCharacteristic(Characteristic.LockTargetState).updateValue(Characteristic.LockTargetState.SECURED)
-            this.latchService.getCharacteristic(Characteristic.LockCurrentState).updateValue(Characteristic.LockCurrentState.SECURED)
           }
-
-          callback(null)
         })
         break
 
@@ -197,43 +190,42 @@ class NukiLatch {
         this.bridge.unlock(this.door.nukiId).then(readData).then(parseJSON).then((response) => {
           if (response.success) {
             this.lockService.getCharacteristic(Characteristic.LockTargetState).updateValue(Characteristic.LockTargetState.UNSECURED)
-            this.lockService.getCharacteristic(Characteristic.LockCurrentState).updateValue(Characteristic.LockCurrentState.UNSECURED)
             this.latchService.getCharacteristic(Characteristic.LockTargetState).updateValue(Characteristic.LockTargetState.SECURED)
-            this.latchService.getCharacteristic(Characteristic.LockCurrentState).updateValue(Characteristic.LockCurrentState.SECURED)
           }
-
-          callback(null)
         })
         break
     }
+
+    callback(null)
   }
 
   setLatchTargetState (state, callback) {
-    this.latchService.getCharacteristic(Characteristic.LockTargetState).updateValue(state)
+    this.log.debug('setLatchTargetState to:', state)
 
     switch (state) {
       case Characteristic.LockCurrentState.UNSECURED:
         this.bridge.unlatch(this.door.nukiId).then(readData).then(parseJSON).then((response) => {
           if (response.success) {
             this.lockService.getCharacteristic(Characteristic.LockTargetState).updateValue(Characteristic.LockTargetState.UNSECURED)
-            this.lockService.getCharacteristic(Characteristic.LockCurrentState).updateValue(Characteristic.LockCurrentState.UNSECURED)
             this.latchService.getCharacteristic(Characteristic.LockTargetState).updateValue(Characteristic.LockTargetState.UNSECURED)
-            this.latchService.getCharacteristic(Characteristic.LockCurrentState).updateValue(Characteristic.LockCurrentState.UNSECURED)
+
+            setTimeout(() => {
+              this.latchService.setCharacteristic(Characteristic.LockTargetState, Characteristic.LockTargetState.SECURED)
+            }, 3000)
           }
-
-          setTimeout(() => {
-            this.latchService.setCharacteristic(Characteristic.LockTargetState, Characteristic.LockTargetState.SECURED)
-          }, 3000)
-
-          callback(null)
         })
         break
+
+      default:
+        this.latchService.getCharacteristic(Characteristic.LockTargetState).updateValue(state)
     }
+
+    callback(null)
   }
 
   updateSmartLockState (data) {
     const state = data.lastKnownState ? data.lastKnownState : data
-    this.log.debug('Updating state:', data)
+    this.log.debug('updateSmartLockState:', state)
 
     switch (state.state) {
       case LOCK_STATE_LOCKED:
@@ -273,5 +265,19 @@ class NukiLatch {
     } else if (state.doorsensorState === DOOR_STATE_DOOR_OPENED) {
       this.contactSensorService.getCharacteristic(Characteristic.ContactSensorState).updateValue(Characteristic.ContactSensorState.CONTACT_NOT_DETECTED)
     }
+
+    if (state.batteryCritical) {
+      this.batteryService.getCharacteristic(Characteristic.StatusLowBattery).updateValue(Characteristic.StatusLowBattery.BATTERY_LEVEL_LOW)
+    } else {
+      this.batteryService.getCharacteristic(Characteristic.StatusLowBattery).updateValue(Characteristic.StatusLowBattery.BATTERY_LEVEL_NORMAL)
+    }
+
+    if (state.batteryCharging) {
+      this.batteryService.getCharacteristic(Characteristic.ChargingState).updateValue(Characteristic.ChargingState.CHARGING)
+    } else {
+      this.batteryService.getCharacteristic(Characteristic.ChargingState).updateValue(Characteristic.ChargingState.NOT_CHARGING)
+    }
+
+    this.batteryService.getCharacteristic(Characteristic.BatteryLevel).updateValue(state.batteryChargeState)
   }
 }
