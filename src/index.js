@@ -6,6 +6,7 @@ let Service, Characteristic
 const DOOR_STATE_DOOR_CLOSED = 2
 const DOOR_STATE_DOOR_OPENED = 3
 const LOCK_STATE_LOCKED = 1
+const LOCK_STATE_JAMMED = 2
 const LOCK_STATE_UNLOCKED = 3
 const LOCK_STATE_UNLATCHED = 5
 const LOCK_ACTION_UNLOCK = 1
@@ -255,6 +256,12 @@ class NukiLatch {
         this.latchService.getCharacteristic(Characteristic.LockTargetState).updateValue(Characteristic.LockTargetState.UNSECURED)
         this.latchService.getCharacteristic(Characteristic.LockCurrentState).updateValue(Characteristic.LockCurrentState.UNSECURED)
         break
+
+      case LOCK_STATE_JAMMED:
+        this.lockService.getCharacteristic(Characteristic.LockTargetState).updateValue(Characteristic.LockTargetState.JAMMED)
+        this.lockService.getCharacteristic(Characteristic.LockCurrentState).updateValue(Characteristic.LockCurrentState.JAMMED)
+        this.latchService.getCharacteristic(Characteristic.LockTargetState).updateValue(Characteristic.LockTargetState.JAMMED)
+        this.latchService.getCharacteristic(Characteristic.LockCurrentState).updateValue(Characteristic.LockCurrentState.JAMMED)
 
       default:
         this.log.warn('Unhandled door state:', state)
