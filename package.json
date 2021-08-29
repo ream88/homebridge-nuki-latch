@@ -1,6 +1,6 @@
 {
   "name": "@ream88/homebridge-nuki-latch",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "description": "Nuki for latched doors",
   "keywords": [
     "homebridge-plugin",

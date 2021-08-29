@@ -27,7 +27,7 @@ During development `rsync` helped a lot with syncing the plugin to my Raspberry
 Pi which is running homebridge.
 
 ```sh
-rsync -r --exclude 'node_modules' . docker.local:/home/pi/homebridge/node_modules/homebridge-nuki-latch
+rsync -vr --exclude 'node_modules' --exclude '.git' . docker.local:/home/pi/homebridge/node_modules/homebridge-nuki-latch
 ```
 
 ## License
